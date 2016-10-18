@@ -5,13 +5,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using Compiler.AST;
+
 namespace Compiler
 {
     class Compiler
     {
         private string source;
         private IEnumerable<Token> tokens;
-        private Command tree;
+        private Node tree;
 
         private static readonly Dictionary<char, Token> tokenLookup
             = new Dictionary<char, Token>()
@@ -45,28 +47,26 @@ namespace Compiler
             tree = ParseTokens(tokens.GetEnumerator());
         }
 
-        private Command ParseTokens(IEnumerator<Token> ts)
+        private Node ParseTokens(IEnumerator<Token> ts)
         {
             if (!ts.MoveNext())
                 return null;
 
             var cur = ts.Current;
 
-            Command c = new Command();
-
-            if(cur == Token.LoopStart)
+            switch(ts.Current)
             {
-                c.Inner = ParseTokens(ts);
-            }
-            else if(cur == Token.LoopEnd)
-            {
-                return null;
+                case Token.DecData:   return new DataNode()   { Change = -1, Next = ParseTokens(ts) };
+                case Token.IncData:   return new DataNode()   { Change = 1,  Next = ParseTokens(ts) };
+                case Token.DecPtr:    return new PtrNode()    { Change = -1, Next = ParseTokens(ts) };
+                case Token.IncPtr:    return new PtrNode()    { Change = 1,  Next = ParseTokens(ts) };
+                case Token.In:        return new InputNode()  { Next = ParseTokens(ts) };
+                case Token.Out:       return new OutputNode() { Next = ParseTokens(ts) };
+                case Token.LoopStart: return new LoopNode()   { Inner = ParseTokens(ts), Next = ParseTokens(ts) };
+                case Token.LoopEnd:   return null;
             }
 
-            c.Op = cur;
-            c.Next = ParseTokens(ts);
-
-            return c;
+            throw new Exception($"Unexpected token {cur}");
         }
 
         public void DumpTree()
@@ -74,26 +74,14 @@ namespace Compiler
             DumpTree(tree, 0);
         }
 
-        private void DumpTree(Command node, int depth)
+        private void DumpTree(Node node, int depth)
         {
             if (node == null) return;
 
-            if (node.Op == Token.LoopStart)
-            {
-                Console.WriteLine("{0}LOOP START", new String(' ', depth * 2));
-                DumpTree(node.Inner, depth + 1);
-                Console.WriteLine("{0}LOOP END", new String(' ', depth * 2));
-            }
+            Console.WriteLine($"{new String(' ', depth * 2)}{node.ToString()}");
 
-            switch(node.Op)
-            {
-                case Token.DecData: Console.WriteLine("{0}DECREMENT DATA", new String(' ', depth * 2)); break;
-                case Token.IncData: Console.WriteLine("{0}INCREMENT DATA", new String(' ', depth * 2)); break;
-                case Token.DecPtr:  Console.WriteLine("{0}DECREMENT PTR",  new String(' ', depth * 2)); break;
-                case Token.IncPtr:  Console.WriteLine("{0}INCREMENT PTR",  new String(' ', depth * 2)); break;
-                case Token.In:      Console.WriteLine("{0}INPUT",          new String(' ', depth * 2)); break;
-                case Token.Out:     Console.WriteLine("{0}OUTPUT",         new String(' ', depth * 2)); break;
-            }
+            if(node is LoopNode n)
+                DumpTree(n.Inner, depth + 1);
 
             DumpTree(node.Next, depth);
         }

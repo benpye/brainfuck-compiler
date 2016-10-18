@@ -4,13 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using Compiler.AST;
+
 using LLVMSharp;
 
 namespace Compiler
 {
     class LLVMBackend
     {
-        private Command tree;
+        private Node tree;
 
         private LLVMModuleRef mod;
 
@@ -23,7 +25,7 @@ namespace Compiler
         private LLVMValueRef data;
         private LLVMValueRef ptr;
 
-        public LLVMBackend(Command tree)
+        public LLVMBackend(Node tree)
         {
             this.tree = tree;
         }
@@ -36,7 +38,7 @@ namespace Compiler
             var ft = LLVM.FunctionType(LLVM.Int32Type(), new LLVMTypeRef[] { }, false);
             mainfn = LLVM.AddFunction(mod, "main", ft);
 
-            LLVMBasicBlockRef entry = LLVM.AppendBasicBlock(mainfn, "entry");
+            var entry = LLVM.AppendBasicBlock(mainfn, "entry");
             builder = LLVM.CreateBuilder();
             LLVM.PositionBuilderAtEnd(builder, entry);
 
@@ -61,9 +63,8 @@ namespace Compiler
             Generate(tree);
 
             LLVM.BuildRet(builder, LLVM.ConstInt(LLVM.Int32Type(), 0, false));
-
-            IntPtr _;
-            LLVM.VerifyModule(mod, LLVMVerifierFailureAction.LLVMPrintMessageAction, out _);
+            
+            LLVM.VerifyModule(mod, LLVMVerifierFailureAction.LLVMPrintMessageAction, out var _);
 
             LLVM.DumpModule(mod);
 
@@ -76,33 +77,27 @@ namespace Compiler
             LLVM.DumpModule(mod);
         }
 
-        private void Generate(Command node)
+        private void Generate(Node node)
         {
             if (node == null)
                 return;
 
-            switch(node.Op)
+            switch(node)
             {
-                case Token.DecData:
-                    GenerateData(-1);
+                case DataNode n:
+                    GenerateData(n.Change);
                     break;
-                case Token.IncData:
-                    GenerateData(1);
+                case PtrNode n:
+                    GeneratePtr(n.Change);
                     break;
-                case Token.DecPtr:
-                    GeneratePtr(-1);
-                    break;
-                case Token.IncPtr:
-                    GeneratePtr(1);
-                    break;
-                case Token.In:
+                case InputNode n:
                     GenerateInput();
                     break;
-                case Token.Out:
+                case OutputNode n:
                     GenerateOutput();
                     break;
-                case Token.LoopStart:
-                    GenerateLoop(node.Inner);
+                case LoopNode n:
+                    GenerateLoop(n.Inner);
                     break;
             }
 
@@ -153,7 +148,7 @@ namespace Compiler
             SetData(tmp);
         }
 
-        private void GenerateLoop(Command child)
+        private void GenerateLoop(Node child)
         {
             var preloop = LLVM.AppendBasicBlock(mainfn, "genloop_pre");
             LLVM.BuildBr(builder, preloop);

@@ -12,7 +12,7 @@ namespace Compiler
     {
         private static void Main(string[] args)
         {
-            Compiler c = new Compiler(@"+[[->]-[-<]>-]>.>>>>.<<<<-.>>-.>.<<.>>>>-.<<<<<++.>>++.");
+            Compiler c = new Compiler(@"+[[-]+]>.>>>>.<<<<-.>>-.>.<<.>>>>-.<<<<<++.>>++.");
             c.Tokenise();
             c.Parse();
             c.DumpTree();
