@@ -1,9 +1,4 @@
 ﻿using Compiler.AST;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Compiler
 {
@@ -21,11 +16,9 @@ namespace Compiler
 
         private Node Optimise(Node node)
         {
-            if (node == null)
-                return null;
-
-            var next = node.Next;
             int c;
+            var next = node?.Next;
+
             switch (node)
             {
                 case DataNode n:
@@ -35,7 +28,8 @@ namespace Compiler
                         c += dn.Change;
                         next = next.Next;
                     }
-                    return new DataNode() { Change = c, Next = Optimise(next) };
+                    node = n.WithChange(c);
+                    break;
                 case PtrNode n:
                     c = n.Change;
                     while (next is PtrNode pn)
@@ -43,16 +37,16 @@ namespace Compiler
                         c += pn.Change;
                         next = next.Next;
                     }
-                    return new PtrNode() { Change = c, Next = Optimise(next) };
+                    node = n.WithChange(c);
+                    break;
                 case LoopNode n:
-                    return new LoopNode() { Inner = Optimise(n.Inner), Next = Optimise(next) };
-                case InputNode n:
-                    return new InputNode() { Next = Optimise(next) };
-                case OutputNode n:
-                    return new OutputNode() { Next = Optimise(next) };
+                    node = n.WithInner(Optimise(n.Inner));
+                    break;
             }
 
-            throw new Exception($"Unexpected node of type {node.GetType()}");
+            node = node?.WithNext(Optimise(next));
+
+            return node;
         }
     }
 }

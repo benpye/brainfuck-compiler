@@ -1,14 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Compiler.AST
+﻿namespace Compiler.AST
 {
     public class DataNode : Node
     {
-        public int Change { get; set; }
+        public DataNode(Node next, int change) : base(next)
+        {
+            Change = change;
+        }
+
+        public int Change { get; private set; }
+
         public override string ToString() => $"{base.ToString()}(Change: {Change})";
+
+        public override Node WithNext(Node next)
+        {
+            return new DataNode(next, Change);
+        }
+
+        public Node WithChange(int change)
+        {
+            return new DataNode(Next, change);
+        }
     }
 }

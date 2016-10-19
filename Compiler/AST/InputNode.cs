@@ -1,12 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Compiler.AST
+﻿namespace Compiler.AST
 {
     class InputNode : Node
     {
+        public InputNode(Node next) : base(next)
+        {
+        }
+
+        public override Node WithNext(Node next)
+        {
+            return new InputNode(next);
+        }
     }
 }

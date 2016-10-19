@@ -1,12 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Compiler.AST
+﻿namespace Compiler.AST
 {
     class OutputNode : Node
     {
+        public OutputNode(Node next) : base(next)
+        {
+        }
+
+        public override Node WithNext(Node next)
+        {
+            return new OutputNode(next);
+        }
     }
 }

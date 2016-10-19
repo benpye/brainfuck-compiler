@@ -1,13 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Compiler.AST
+﻿namespace Compiler.AST
 {
     class LoopNode : Node
     {
-        public Node Inner { get; set; }
+        public LoopNode(Node next, Node inner) : base(next)
+        {
+            Inner = inner;
+        }
+
+        public Node Inner { get; private set; }
+
+        public override Node WithNext(Node next)
+        {
+            return new LoopNode(next, Inner);
+        }
+
+        public Node WithInner(Node inner)
+        {
+            return new LoopNode(Next, inner);
+        }
     }
 }

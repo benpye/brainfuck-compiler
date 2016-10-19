@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using Compiler.AST;
 
@@ -61,14 +58,16 @@ namespace Compiler
 
             switch(ts.Current)
             {
-                case Token.DecData:   return new DataNode()   { Change = -1, Next = ParseTokens(ts) };
-                case Token.IncData:   return new DataNode()   { Change = 1,  Next = ParseTokens(ts) };
-                case Token.DecPtr:    return new PtrNode()    { Change = -1, Next = ParseTokens(ts) };
-                case Token.IncPtr:    return new PtrNode()    { Change = 1,  Next = ParseTokens(ts) };
-                case Token.In:        return new InputNode()  { Next = ParseTokens(ts) };
-                case Token.Out:       return new OutputNode() { Next = ParseTokens(ts) };
-                case Token.LoopStart: return new LoopNode()   { Inner = ParseTokens(ts), Next = ParseTokens(ts) };
-                case Token.LoopEnd:   return null;
+                case Token.DecData: return new DataNode(ParseTokens(ts), -1);
+                case Token.IncData: return new DataNode(ParseTokens(ts), 1);
+                case Token.DecPtr:  return new PtrNode(ParseTokens(ts), -1);
+                case Token.IncPtr:  return new PtrNode(ParseTokens(ts), 1);
+                case Token.In:      return new InputNode(ParseTokens(ts));
+                case Token.Out:     return new OutputNode(ParseTokens(ts));
+                case Token.LoopStart:
+                    var inner = ParseTokens(ts);
+                    return new LoopNode(ParseTokens(ts), inner);
+                case Token.LoopEnd: return null;
             }
 
             throw new Exception($"Unexpected token {cur}");

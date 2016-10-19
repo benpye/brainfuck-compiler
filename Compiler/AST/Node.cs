@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Compiler.AST
+﻿namespace Compiler.AST
 {
-    public class Node
+    public abstract class Node
     {
-        public Node Next { get; set; }
+        public Node(Node next)
+        {
+            Next = next;
+        }
+
+        public Node Next { get; private set; }
+
+        public abstract Node WithNext(Node next);
     }
 }
