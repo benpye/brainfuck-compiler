@@ -10,7 +10,7 @@ using LLVMSharp;
 
 namespace Compiler
 {
-    class LLVMBackend
+    public class LLVMBackend
     {
         private Node tree;
 
@@ -30,7 +30,32 @@ namespace Compiler
             this.tree = tree;
         }
 
-        public void Generate()
+        public void Compile()
+        {
+            CompilePre();
+            
+            Compile(tree);
+
+            LLVM.BuildRet(builder, LLVM.ConstInt(LLVM.Int32Type(), 0, false));
+            
+            LLVM.VerifyModule(mod, LLVMVerifierFailureAction.LLVMPrintMessageAction, out var _);
+        }
+
+        public void Optimise(uint level)
+        {
+            var pm = LLVM.PassManagerBuilderCreate();
+            LLVM.PassManagerBuilderSetOptLevel(pm, level);
+            var pmr = LLVM.CreatePassManager();
+            LLVM.PassManagerBuilderPopulateModulePassManager(pm, pmr);
+            LLVM.RunPassManager(pmr, mod);
+        }
+
+        public void DumpModule()
+        {
+            LLVM.DumpModule(mod);
+        }
+
+        private void CompilePre()
         {
             mod = LLVM.ModuleCreateWithName("bfout");
 
@@ -55,29 +80,13 @@ namespace Compiler
             // Local variables (data array + ptr) on stack
             data = LLVM.BuildArrayAlloca(builder, LLVM.Int8Type(), LLVM.ConstInt(LLVM.Int64Type(), 100000, false), "data");
             ptr = LLVM.BuildAlloca(builder, LLVM.Int64Type(), "ptr");
-            
+
             // Zero data + ptr
             LLVM.BuildStore(builder, LLVM.ConstInt(LLVM.Int64Type(), 0, false), ptr);
             LLVM.BuildCall(builder, memset, new LLVMValueRef[] { data, LLVM.ConstInt(LLVM.Int8Type(), 0, false), LLVM.ConstInt(LLVM.Int64Type(), 100000, false), LLVM.ConstInt(LLVM.Int32Type(), 0, false), LLVM.ConstInt(LLVM.Int1Type(), 0, false) }, "");
-            
-            Generate(tree);
-
-            LLVM.BuildRet(builder, LLVM.ConstInt(LLVM.Int32Type(), 0, false));
-            
-            LLVM.VerifyModule(mod, LLVMVerifierFailureAction.LLVMPrintMessageAction, out var _);
-
-            LLVM.DumpModule(mod);
-
-            var pm = LLVM.PassManagerBuilderCreate();
-            LLVM.PassManagerBuilderSetOptLevel(pm, 3);
-            var pmr = LLVM.CreatePassManager();
-            LLVM.PassManagerBuilderPopulateModulePassManager(pm, pmr);
-            LLVM.RunPassManager(pmr, mod);
-
-            LLVM.DumpModule(mod);
         }
 
-        private void Generate(Node node)
+        private void Compile(Node node)
         {
             if (node == null)
                 return;
@@ -85,40 +94,40 @@ namespace Compiler
             switch(node)
             {
                 case DataNode n:
-                    GenerateData(n.Change);
+                    CompileDataNode(n.Change);
                     break;
                 case PtrNode n:
-                    GeneratePtr(n.Change);
+                    CompilePtrNode(n.Change);
                     break;
                 case InputNode n:
-                    GenerateInput();
+                    CompileInputNode();
                     break;
                 case OutputNode n:
-                    GenerateOutput();
+                    CompileOutputNode();
                     break;
                 case LoopNode n:
-                    GenerateLoop(n.Inner);
+                    CompileLoopNode(n.Inner);
                     break;
             }
 
-            Generate(node.Next);
+            Compile(node.Next);
         }
 
-        private LLVMValueRef GetData()
+        private LLVMValueRef GetDataHelper()
         {
             var derefptr = LLVM.BuildLoad(builder, ptr, "getdata_ptr");
             var addr = LLVM.BuildGEP(builder, data, new LLVMValueRef[] { derefptr }, "getdata_addr");
             return LLVM.BuildLoad(builder, addr, "getdata_data");
         }
 
-        private void SetData(LLVMValueRef val)
+        private void SetDataHelper(LLVMValueRef val)
         {
             var derefptr = LLVM.BuildLoad(builder, ptr, "setdata_ptr");
             var addr = LLVM.BuildGEP(builder, data, new LLVMValueRef[] { derefptr }, "setdata_addr");
             LLVM.BuildStore(builder, val, addr);
         }
 
-        private void GenerateData(int change)
+        private void CompileDataNode(int change)
         {
             var derefptr = LLVM.BuildLoad(builder, ptr, "gendata_ptr");
             var addr = LLVM.BuildGEP(builder, data, new LLVMValueRef[] { derefptr }, "gendata_addr");
@@ -127,39 +136,39 @@ namespace Compiler
             LLVM.BuildStore(builder, tmp, addr);
         }
 
-        private void GeneratePtr(int change)
+        private void CompilePtrNode(int change)
         {
             var derefptr = LLVM.BuildLoad(builder, ptr, "genptr_ptr");
             var tmp = LLVM.BuildAdd(builder, derefptr, LLVM.ConstInt(LLVM.Int64Type(), (ulong)change, false), "genptr_result");
             LLVM.BuildStore(builder, tmp, ptr);
         }
 
-        private void GenerateOutput()
+        private void CompileOutputNode()
         {
-            var tmp = GetData();
+            var tmp = GetDataHelper();
             tmp = LLVM.BuildZExt(builder, tmp, LLVM.Int32Type(), "genout_cast");
             LLVM.BuildCall(builder, putchar, new LLVMValueRef[] { tmp }, "genout_out");
         }
 
-        private void GenerateInput()
+        private void CompileInputNode()
         {
             var tmp = LLVM.BuildCall(builder, getchar, new LLVMValueRef[] { }, "genin_in");
             tmp = LLVM.BuildTrunc(builder, tmp, LLVM.Int8Type(), "genin_cast");
-            SetData(tmp);
+            SetDataHelper(tmp);
         }
 
-        private void GenerateLoop(Node child)
+        private void CompileLoopNode(Node child)
         {
             var preloop = LLVM.AppendBasicBlock(mainfn, "genloop_pre");
             LLVM.BuildBr(builder, preloop);
             LLVM.PositionBuilderAtEnd(builder, preloop);
-            var tmp = GetData();
+            var tmp = GetDataHelper();
             var cond = LLVM.BuildICmp(builder, LLVMIntPredicate.LLVMIntEQ, tmp, LLVM.ConstInt(LLVM.Int8Type(), 0, false), "genloop_cond");
             var loop = LLVM.AppendBasicBlock(mainfn, "genloop_loop");
             var postloop = LLVM.AppendBasicBlock(mainfn, "genloop_post");
             LLVM.BuildCondBr(builder, cond, postloop, loop);
             LLVM.PositionBuilderAtEnd(builder, loop);
-            Generate(child);
+            Compile(child);
             LLVM.BuildBr(builder, preloop);
             LLVM.PositionBuilderAtEnd(builder, postloop);
         }

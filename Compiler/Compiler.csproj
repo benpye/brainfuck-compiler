@@ -84,6 +84,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ASTPass.cs" />
     <Compile Include="AST\DataNode.cs" />
     <Compile Include="AST\InputNode.cs" />
     <Compile Include="AST\LoopNode.cs" />
@@ -94,6 +95,7 @@
     <Compile Include="LLVMBackend.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RepeatOptimiser.cs" />
     <Compile Include="Token.cs" />
   </ItemGroup>
   <ItemGroup>

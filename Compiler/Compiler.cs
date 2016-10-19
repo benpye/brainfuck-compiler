@@ -9,11 +9,10 @@ using Compiler.AST;
 
 namespace Compiler
 {
-    class Compiler
+    class Compiler : ASTPass
     {
         private string source;
         private IEnumerable<Token> tokens;
-        private Node tree;
 
         private static readonly Dictionary<char, Token> tokenLookup
             = new Dictionary<char, Token>()
@@ -35,16 +34,22 @@ namespace Compiler
             tokens = new List<Token>();
         }
 
-        public void Tokenise()
+        public override void DoPass()
+        {
+            Tokenise();
+            Parse();
+        }
+
+        private void Tokenise()
         {
             tokens = from c in source
                      where tokenLookup.ContainsKey(c)
                      select tokenLookup[c];
         }
 
-        public void Parse()
+        private void Parse()
         {
-            tree = ParseTokens(tokens.GetEnumerator());
+            AST = ParseTokens(tokens.GetEnumerator());
         }
 
         private Node ParseTokens(IEnumerator<Token> ts)
@@ -67,29 +72,6 @@ namespace Compiler
             }
 
             throw new Exception($"Unexpected token {cur}");
-        }
-
-        public void DumpTree()
-        {
-            DumpTree(tree, 0);
-        }
-
-        private void DumpTree(Node node, int depth)
-        {
-            if (node == null) return;
-
-            Console.WriteLine($"{new String(' ', depth * 2)}{node.ToString()}");
-
-            if(node is LoopNode n)
-                DumpTree(n.Inner, depth + 1);
-
-            DumpTree(node.Next, depth);
-        }
-
-        public void Compile()
-        {
-            LLVMBackend llvm = new LLVMBackend(tree);
-            llvm.Generate();
         }
     }
 }
