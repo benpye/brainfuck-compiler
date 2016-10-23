@@ -19,9 +19,12 @@ namespace Compiler
         private LLVMValueRef data;
         private LLVMValueRef ptr;
 
-        public LLVMBackend(Node tree)
+        private uint buflength;
+
+        public LLVMBackend(Node tree, uint buflength)
         {
             this.tree = tree;
+            this.buflength = buflength;
         }
 
         public void Compile()
@@ -72,12 +75,17 @@ namespace Compiler
             memset = LLVM.AddFunction(mod, "llvm.memset.p0i8.i64", ft);
 
             // Local variables (data array + ptr) on stack
-            data = LLVM.BuildArrayAlloca(builder, LLVM.Int8Type(), LLVM.ConstInt(LLVM.Int64Type(), 100000, false), "data");
+            data = LLVM.BuildArrayAlloca(builder, LLVM.Int8Type(), LLVM.ConstInt(LLVM.Int64Type(), buflength, false), "data");
             ptr = LLVM.BuildAlloca(builder, LLVM.Int64Type(), "ptr");
 
             // Zero data + ptr
             LLVM.BuildStore(builder, LLVM.ConstInt(LLVM.Int64Type(), 0, false), ptr);
-            LLVM.BuildCall(builder, memset, new LLVMValueRef[] { data, LLVM.ConstInt(LLVM.Int8Type(), 0, false), LLVM.ConstInt(LLVM.Int64Type(), 100000, false), LLVM.ConstInt(LLVM.Int32Type(), 0, false), LLVM.ConstInt(LLVM.Int1Type(), 0, false) }, "");
+            LLVM.BuildCall(builder, memset, new LLVMValueRef[] { data, LLVM.ConstInt(LLVM.Int8Type(), 0, false), LLVM.ConstInt(LLVM.Int64Type(), buflength, false), LLVM.ConstInt(LLVM.Int32Type(), 0, false), LLVM.ConstInt(LLVM.Int1Type(), 0, false) }, "");
+        }
+
+        public void Output(string path)
+        {
+            LLVM.WriteBitcodeToFile(mod, path);
         }
 
         private void Compile(Node node)
